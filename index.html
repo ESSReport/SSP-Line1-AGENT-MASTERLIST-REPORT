@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shops Balance Dashboard</title>
+
+  <!-- ✅ External CSS file -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- 🔒 Simple PIN Protection -->
+  <script>
+    // Change this PIN to your own
+    const encodedPass = "MTEwMTIwMjU="; // base64 for "11012025"
+    const entered = prompt("Enter PIN to access dashboard:");
+
+    if (btoa(entered) !== encodedPass) {
+      document.body.innerHTML = `
+        <h2 style="color:red;text-align:center;margin-top:40px;">
+          Access Denied ❌<br>Invalid PIN
+        </h2>`;
+      throw new Error("Access denied");
+    }
+  </script>
+</head>
+
+<body>
+  <h2>Shops Balance Summary</h2>
+
+  <!-- Toolbar (Filters & Actions) -->
+  <div class="toolbar">
+    <select id="leaderFilter">
+      <option value="ALL">All Team Leaders</option>
+    </select>
+
+    <input type="text" id="searchInput" placeholder="🔍 Search Shop Name..." />
+
+    <button id="exportBtn">💾 Export CSV</button>
+    <button id="resetBtn" style="background:#888;">🔄 Reset</button>
+  </div>
+
+  <!-- Link to open filtered dashboard in new tab -->
+  <div id="teamDashboardLink"></div>
+
+  <!-- Table Container -->
+  <div id="tableContainer">
+    <table id="shopTable">
+      <thead><tr id="tableHeader"></tr></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div id="pagination">
+    <button id="prevPage" disabled>⬅ Prev</button>
+    <span id="pageInfo" style="margin:0 12px;">Page 1</span>
+    <button id="nextPage">Next ➡</button>
+  </div>
+
+  <!-- Totals Summary -->
+  <div id="totalsRow"></div>
+
+  <!-- Your dashboard logic -->
+  <script src="dashboard.js"></script>
+</body>
+</html>
