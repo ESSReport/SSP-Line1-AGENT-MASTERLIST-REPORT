@@ -76,9 +76,6 @@ async function loadData() {
       return normalizeString(r[shopKey]) === normalizedShop;
     });
 
-    console.log("shopRow keys:", Object.keys(shopRow || {}));
-    console.log("bringForwardBalance raw:", getValue(shopRow, "BRING FORWARD BALANCE"));
-
     const bringForwardBalance = parseNumber(rTrim(getValue(shopRow, "BRING FORWARD BALANCE")));
     const securityDeposit = parseNumber(rTrim(getValue(shopRow, "SECURITY DEPOSIT")));
     const teamLeader = rTrim(getValue(shopRow, "TEAM LEADER")) || "-";
@@ -89,15 +86,15 @@ async function loadData() {
     document.getElementById("infoTeamLeader").textContent = teamLeader;
 
     // ------------------------------
-    // Commission Rates (from COMM sheet)
+    // Commission Rates (COMM sheet)
     // ------------------------------
     const shopCommRow = commData.find(r => normalizeString(r.SHOP) === normalizedShop);
-    const dpCommRate = parseNumber(shopCommRow?.["DP COMM"]);
-    const wdCommRate = parseNumber(shopCommRow?.["WD COMM"]);
-    const addCommRate = parseNumber(shopCommRow?.["ADD COMM"]);
+    const dpCommRate = parseNumber(getValue(shopCommRow, "DP COMM"));
+    const wdCommRate = parseNumber(getValue(shopCommRow, "WD COMM"));
+    const addCommRate = parseNumber(getValue(shopCommRow, "ADD COMM"));
 
     // ------------------------------
-    // Unique dates across sheets for this shop
+    // Unique dates across sheets
     // ------------------------------
     const datesSet = new Set([
       ...depositData.filter(r => normalizeString(r.SHOP) === normalizedShop).map(r => r.DATE),
@@ -107,7 +104,7 @@ async function loadData() {
     const sortedDates = Array.from(datesSet).filter(Boolean).sort((a, b) => new Date(a) - new Date(b));
 
     // ------------------------------
-    // Initialize running totals
+    // Initialize totals
     // ------------------------------
     let runningBalance = bringForwardBalance;
     const totals = {
@@ -117,7 +114,7 @@ async function loadData() {
     tbody.innerHTML = "";
 
     // ------------------------------
-    // Add B/F Balance row
+    // Add B/F Balance
     // ------------------------------
     if (bringForwardBalance) {
       const bfbRow = document.createElement("tr");
@@ -145,13 +142,17 @@ async function loadData() {
     for (const date of sortedDates) {
       const deposits = depositData.filter(r => normalizeString(r.SHOP) === normalizedShop && r.DATE === date);
       const withdrawals = withdrawalData.filter(r => normalizeString(r.SHOP) === normalizedShop && r.DATE === date);
-      const stlmForDate = stlmData.filter(r => normalizeString(r.SHOP) === normalizedShop && r.DATE === date);
 
-      const depTotalRow = deposits.reduce((s, r) => s + parseNumber(r.AMOUNT), 0);
-      const wdTotalRow = withdrawals.reduce((s, r) => s + parseNumber(r.AMOUNT), 0);
+      // handle STLM/TOPUP properly
+      const stlmForDate = stlmData.filter(r => normalizeString(getValue(r, "SHOP")) === normalizedShop && getValue(r, "DATE") === date);
 
-      const sumMode = mode => stlmForDate.filter(r => normalizeString(r.MODE) === mode)
-        .reduce((s, r) => s + parseNumber(r.AMOUNT), 0);
+      const depTotalRow = deposits.reduce((s, r) => s + parseNumber(getValue(r, "AMOUNT")), 0);
+      const wdTotalRow = withdrawals.reduce((s, r) => s + parseNumber(getValue(r, "AMOUNT")), 0);
+
+      const sumMode = mode => stlmForDate
+        .filter(r => normalizeString(getValue(r, "MODE")) === normalizeString(mode))
+        .reduce((s, r) => s + parseNumber(getValue(r, "AMOUNT")), 0);
+
       const inAmtRow = sumMode("IN");
       const outAmtRow = sumMode("OUT");
       const settlementRow = sumMode("SETTLEMENT");
@@ -159,18 +160,27 @@ async function loadData() {
       const adjustmentRow = sumMode("ADJUSTMENT");
       const secDepRow = sumMode("SECURITY DEPOSIT");
 
+      // --- Commission Calculations ---
       const dpCommRow = depTotalRow * dpCommRate / 100;
       const wdCommRow = wdTotalRow * wdCommRate / 100;
       const addCommRow = depTotalRow * addCommRate / 100;
 
-      runningBalance += depTotalRow - wdTotalRow + inAmtRow - outAmtRow - settlementRow - specialPayRow
-        + adjustmentRow - dpCommRow - wdCommRow - addCommRow;
+      // --- Running Balance Calculation ---
+      runningBalance += (
+        depTotalRow - wdTotalRow +
+        inAmtRow - outAmtRow -
+        settlementRow - specialPayRow +
+        adjustmentRow -
+        dpCommRow - wdCommRow - addCommRow
+      );
 
+      // --- Totals ---
       totals.depTotal += depTotalRow; totals.wdTotal += wdTotalRow;
       totals.inAmt += inAmtRow; totals.outAmt += outAmtRow; totals.settlement += settlementRow;
       totals.specialPay += specialPayRow; totals.adjustment += adjustmentRow;
       totals.secDep += secDepRow; totals.dpComm += dpCommRow; totals.wdComm += wdCommRow; totals.addComm += addCommRow;
 
+      // --- Table Row ---
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${date}</td>
@@ -215,7 +225,7 @@ async function loadData() {
     `;
 
     // ------------------------------
-    // Attach View Daily Transactions redirect
+    // View Daily Transactions Redirect
     // ------------------------------
     const btn = document.getElementById("viewDailyBtn");
     btn.addEventListener("click", () => {
