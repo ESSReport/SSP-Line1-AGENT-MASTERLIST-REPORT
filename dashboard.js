@@ -7,7 +7,7 @@ const HEADERS = [
   "SECURITY DEPOSIT",
   "BRING FORWARD BALANCE",
   "TOTAL DEPOSIT",
-  "TOTAL WITHDAWAL",
+  "TOTAL WITHDRAWAL",
   "INTERNAL TRANSFER IN",
   "INTERNAL TRANSAFER OUT",
   "SETTLEMENT",
@@ -94,7 +94,7 @@ function buildSummary(data) {
         "SECURITY DEPOSIT": 0,
         "BRING FORWARD BALANCE": 0,
         "TOTAL DEPOSIT": 0,
-        "TOTAL WITHDAWAL": 0,
+        "TOTAL WITHDRAWAL": 0,
         "INTERNAL TRANSFER IN": 0,
         "INTERNAL TRANSAFER OUT": 0,
         "SETTLEMENT": 0,
@@ -110,7 +110,7 @@ function buildSummary(data) {
     summary[shop]["SECURITY DEPOSIT"] += parseNumber(r["SECURITY DEPOSIT"]);
     summary[shop]["BRING FORWARD BALANCE"] += parseNumber(r["BRING FORWARD BALANCE"]);
     summary[shop]["TOTAL DEPOSIT"] += parseNumber(r["TOTAL DEPOSIT"]);
-    summary[shop]["TOTAL WITHDAWAL"] += parseNumber(r["TOTAL WITHDAWAL"]);
+    summary[shop]["TOTAL WITHDRAWAL"] += parseNumber(r["TOTAL WITHDRAWAL"]);
     summary[shop]["INTERNAL TRANSFER IN"] += parseNumber(r["INTERNAL TRANSFER IN"]);
     summary[shop]["INTERNAL TRANSAFER OUT"] += parseNumber(r["INTERNAL TRANSAFER OUT"]);
     summary[shop]["SETTLEMENT"] += parseNumber(r["SETTLEMENT"]);
@@ -123,7 +123,7 @@ function buildSummary(data) {
     const rb =
       summary[shop]["BRING FORWARD BALANCE"] +
       summary[shop]["TOTAL DEPOSIT"] -
-      summary[shop]["TOTAL WITHDAWAL"] +
+      summary[shop]["TOTAL WITHDRAWAL"] +
       summary[shop]["INTERNAL TRANSFER IN"] -
       summary[shop]["INTERNAL TRANSAFER OUT"] -
       summary[shop]["SETTLEMENT"] -
@@ -291,4 +291,5 @@ function exportCSV() {
 }
 /* ---------- INIT ---------- */
 loadDashboard();
+
 
