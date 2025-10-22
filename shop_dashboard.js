@@ -41,7 +41,14 @@ async function fetchSheet(url) {
   return res.json();
 }
 
-function rTrim(v){ return String(v||"").trim(); }
+function rTrim(v) { return String(v || "").trim(); }
+
+// 🔧 Helper: safely get value by normalized header
+function getValue(row, header) {
+  if (!row) return "";
+  const key = Object.keys(row).find(k => normalizeString(k) === normalizeString(header));
+  return row[key] ?? "";
+}
 
 // ------------------------------
 // Load Data
@@ -64,10 +71,17 @@ async function loadData() {
     // ------------------------------
     // SHOP BALANCE: B/F, Security Deposit, Team Leader
     // ------------------------------
-    const shopRow = shopBalanceData.find(r => normalizeString(r["SHOP"]) === normalizedShop);
-    const bringForwardBalance = parseNumber(shopRow ? rTrim(shopRow[" BRING FORWARD BALANCE "]) : 0);
-    const securityDeposit = parseNumber(shopRow ? rTrim(shopRow["SECURITY DEPOSIT"]) : 0);
-    const teamLeader = shopRow ? rTrim(shopRow["TEAM LEADER"]) : "-";
+    const shopRow = shopBalanceData.find(r => {
+      const shopKey = Object.keys(r).find(k => normalizeString(k) === "SHOP");
+      return normalizeString(r[shopKey]) === normalizedShop;
+    });
+
+    console.log("shopRow keys:", Object.keys(shopRow || {}));
+    console.log("bringForwardBalance raw:", getValue(shopRow, "BRING FORWARD BALANCE"));
+
+    const bringForwardBalance = parseNumber(rTrim(getValue(shopRow, "BRING FORWARD BALANCE")));
+    const securityDeposit = parseNumber(rTrim(getValue(shopRow, "SECURITY DEPOSIT")));
+    const teamLeader = rTrim(getValue(shopRow, "TEAM LEADER")) || "-";
 
     document.getElementById("infoShopName").textContent = shopName;
     document.getElementById("infoBFBalance").textContent = formatNumber(bringForwardBalance);
@@ -90,15 +104,15 @@ async function loadData() {
       ...withdrawalData.filter(r => normalizeString(r.SHOP) === normalizedShop).map(r => r.DATE),
       ...stlmData.filter(r => normalizeString(r.SHOP) === normalizedShop).map(r => r.DATE)
     ]);
-    const sortedDates = Array.from(datesSet).filter(Boolean).sort((a,b) => new Date(a) - new Date(b));
+    const sortedDates = Array.from(datesSet).filter(Boolean).sort((a, b) => new Date(a) - new Date(b));
 
     // ------------------------------
     // Initialize running totals
     // ------------------------------
     let runningBalance = bringForwardBalance;
     const totals = {
-      depTotal:0, wdTotal:0, inAmt:0, outAmt:0, settlement:0,
-      specialPay:0, adjustment:0, secDep:0, dpComm:0, wdComm:0, addComm:0
+      depTotal: 0, wdTotal: 0, inAmt: 0, outAmt: 0, settlement: 0,
+      specialPay: 0, adjustment: 0, secDep: 0, dpComm: 0, wdComm: 0, addComm: 0
     };
     tbody.innerHTML = "";
 
@@ -129,14 +143,15 @@ async function loadData() {
     // Loop through each date
     // ------------------------------
     for (const date of sortedDates) {
-      const deposits = depositData.filter(r=>normalizeString(r.SHOP)===normalizedShop && r.DATE===date);
-      const withdrawals = withdrawalData.filter(r=>normalizeString(r.SHOP)===normalizedShop && r.DATE===date);
-      const stlmForDate = stlmData.filter(r=>normalizeString(r.SHOP)===normalizedShop && r.DATE===date);
+      const deposits = depositData.filter(r => normalizeString(r.SHOP) === normalizedShop && r.DATE === date);
+      const withdrawals = withdrawalData.filter(r => normalizeString(r.SHOP) === normalizedShop && r.DATE === date);
+      const stlmForDate = stlmData.filter(r => normalizeString(r.SHOP) === normalizedShop && r.DATE === date);
 
-      const depTotalRow = deposits.reduce((s,r)=>s+parseNumber(r.AMOUNT),0);
-      const wdTotalRow = withdrawals.reduce((s,r)=>s+parseNumber(r.AMOUNT),0);
+      const depTotalRow = deposits.reduce((s, r) => s + parseNumber(r.AMOUNT), 0);
+      const wdTotalRow = withdrawals.reduce((s, r) => s + parseNumber(r.AMOUNT), 0);
 
-      const sumMode = mode => stlmForDate.filter(r => normalizeString(r.MODE)===mode).reduce((s,r)=>s+parseNumber(r.AMOUNT),0);
+      const sumMode = mode => stlmForDate.filter(r => normalizeString(r.MODE) === mode)
+        .reduce((s, r) => s + parseNumber(r.AMOUNT), 0);
       const inAmtRow = sumMode("IN");
       const outAmtRow = sumMode("OUT");
       const settlementRow = sumMode("SETTLEMENT");
@@ -149,7 +164,7 @@ async function loadData() {
       const addCommRow = depTotalRow * addCommRate / 100;
 
       runningBalance += depTotalRow - wdTotalRow + inAmtRow - outAmtRow - settlementRow - specialPayRow
-                        + adjustmentRow - dpCommRow - wdCommRow - addCommRow;
+        + adjustmentRow - dpCommRow - wdCommRow - addCommRow;
 
       totals.depTotal += depTotalRow; totals.wdTotal += wdTotalRow;
       totals.inAmt += inAmtRow; totals.outAmt += outAmtRow; totals.settlement += settlementRow;
@@ -179,7 +194,7 @@ async function loadData() {
     // Highlight latest row
     // ------------------------------
     const rows = tbody.querySelectorAll("tr");
-    if (rows.length) rows[rows.length-1].classList.add("latest");
+    if (rows.length) rows[rows.length - 1].classList.add("latest");
 
     // ------------------------------
     // Totals row
@@ -212,9 +227,9 @@ async function loadData() {
       window.location.href = `daily_transactions.html?shopName=${encodeURIComponent(shop)}`;
     });
 
-  } catch(err){
+  } catch (err) {
     console.error(err);
-    alert("⚠️ Error loading data: "+err.message);
+    alert("⚠️ Error loading data: " + err.message);
   }
 
   loadingSpinner.style.display = "none";
@@ -224,4 +239,3 @@ async function loadData() {
 // Initialize
 // ------------------------------
 loadData();
-
