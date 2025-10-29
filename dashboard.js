@@ -4,6 +4,7 @@ const OPENSHEET_URL = `https://opensheet.elk.sh/${SHEET_ID}/SHOPS%20BALANCE`;
 const HEADERS = [
   "SHOP NAME",
   "TEAM LEADER",
+  "GROUP NAME",
   "SECURITY DEPOSIT",
   "BRING FORWARD BALANCE",
   "TOTAL DEPOSIT",
@@ -38,6 +39,7 @@ let cachedData = [];
 let currentPage = 1;
 const rowsPerPage = 20;
 
+/* ---------- FETCH DATA ---------- */
 async function fetchShopBalance() {
   const res = await fetch(OPENSHEET_URL);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -45,26 +47,35 @@ async function fetchShopBalance() {
   return json.map(normalize);
 }
 
+/* ---------- INIT DASHBOARD ---------- */
 async function loadDashboard() {
   const data = await fetchShopBalance();
   rawData = data;
-  buildTeamLeaderDropdown(data);
 
-  // Auto-filter if URL contains teamLeader param
+  // Read teamLeader param from URL (if any)
   const urlParams = new URLSearchParams(window.location.search);
-  const teamLeaderParam = urlParams.get("teamLeader");
+  const teamLeaderParam = urlParams.get("teamLeader")
+    ? urlParams.get("teamLeader").toUpperCase()
+    : "ALL";
 
-  if (teamLeaderParam) {
-    document.getElementById("leaderFilter").value = teamLeaderParam.toUpperCase();
-    // Hide dropdown and link
+  // Build dropdowns (filter groups if a leader is preselected)
+  buildTeamLeaderDropdown(data);
+  buildGroupDropdown(data, teamLeaderParam);
+
+  // If a leader is in the URL, preselect and hide leader dropdown
+  if (teamLeaderParam !== "ALL") {
+    document.getElementById("leaderFilter").value = teamLeaderParam;
     document.getElementById("leaderFilter").style.display = "none";
     document.getElementById("teamDashboardLink").style.display = "none";
   }
 
   buildSummary(data);
-  if (teamLeaderParam) filterData();
+
+  // Apply filter automatically if a leader is in the URL
+  if (teamLeaderParam !== "ALL") filterData();
 }
 
+/* ---------- BUILD DROPDOWNS ---------- */
 function buildTeamLeaderDropdown(data) {
   const dropdown = document.getElementById("leaderFilter");
   dropdown.innerHTML = '<option value="ALL">All Team Leaders</option>';
@@ -79,6 +90,28 @@ function buildTeamLeaderDropdown(data) {
   });
 }
 
+function buildGroupDropdown(data, selectedLeader = "ALL") {
+  const dropdown = document.getElementById("groupFilter");
+  dropdown.innerHTML = '<option value="ALL">All Groups</option>';
+
+  const groups = [...new Set(
+    data
+      .filter(r =>
+        selectedLeader === "ALL" ||
+        (r["TEAM LEADER"] || "").trim().toUpperCase() === selectedLeader
+      )
+      .map(r => (r["GROUP NAME"] || "").trim().toUpperCase())
+  )].filter(name => name && name !== "#N/A" && name !== "N/A");
+
+  groups.sort().forEach(g => {
+    const opt = document.createElement("option");
+    opt.value = g;
+    opt.textContent = g;
+    dropdown.appendChild(opt);
+  });
+}
+
+/* ---------- BUILD SUMMARY DATA ---------- */
 function buildSummary(data) {
   const summary = {};
   data.forEach(r => {
@@ -86,11 +119,14 @@ function buildSummary(data) {
     if (!shop) return;
 
     const leader = (r["TEAM LEADER"] || "").trim().toUpperCase();
+    const group = (r["GROUP NAME"] || "").trim().toUpperCase();
+    const wallet = (r["WALLET NUMBER"] || "").trim();
 
     if (!summary[shop]) {
       summary[shop] = {
         "SHOP NAME": shop,
         "TEAM LEADER": leader,
+        "GROUP NAME": group,
         "SECURITY DEPOSIT": 0,
         "BRING FORWARD BALANCE": 0,
         "TOTAL DEPOSIT": 0,
@@ -104,6 +140,7 @@ function buildSummary(data) {
         "WD COMM": 0,
         "ADD COMM": 0,
         "RUNNING BALANCE": 0,
+        "WALLET NUMBER": wallet,
       };
     }
 
@@ -141,6 +178,7 @@ function buildSummary(data) {
   renderTable();
 }
 
+/* ---------- RENDER TABLE ---------- */
 function renderTable() {
   const tableHead = document.getElementById("tableHeader");
   const tableBody = document.getElementById("tableBody");
@@ -150,7 +188,7 @@ function renderTable() {
   HEADERS.forEach(h => {
     const th = document.createElement("th");
     th.textContent = h;
-    if (h === "SHOP NAME" || h === "TEAM LEADER") th.classList.add("left");
+    if (["SHOP NAME", "TEAM LEADER", "GROUP NAME"].includes(h)) th.classList.add("left");
     tableHead.appendChild(th);
   });
 
@@ -163,13 +201,14 @@ function renderTable() {
       const td = document.createElement("td");
       if (h === "SHOP NAME") {
         const a = document.createElement("a");
-        a.textContent = r[h] || "";
+        const wallet = r["WALLET NUMBER"] ? ` (${r["WALLET NUMBER"]})` : "";
+        a.textContent = `${r[h] || ""}${wallet}`;
         a.href = `shop_dashboard.html?shopName=${encodeURIComponent(r[h] || "")}`;
         a.target = "_blank";
         a.className = "shop-link";
         td.appendChild(a);
         td.classList.add("left");
-      } else if (h === "TEAM LEADER") {
+      } else if (["TEAM LEADER", "GROUP NAME"].includes(h)) {
         td.textContent = r[h] || "";
         td.classList.add("left");
       } else {
@@ -188,20 +227,22 @@ function renderTable() {
   updateTeamDashboardLink();
 }
 
+/* ---------- PAGINATION ---------- */
 function updatePagination() {
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
   document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${totalPages}`;
   document.getElementById("prevPage").disabled = currentPage === 1;
-  document.getElementById("nextPage").disabled = currentPage === totalPages || totalPages === 0;
+  document.getElementById("nextPage").disabled =
+    currentPage === totalPages || totalPages === 0;
 }
 
-/* ---------- Totals Bar ---------- */
+/* ---------- TOTALS ---------- */
 function renderTotals() {
   const totalsDiv = document.getElementById("totalsRow");
   totalsDiv.innerHTML = "";
 
   HEADERS.forEach(h => {
-    if (["SHOP NAME", "TEAM LEADER"].includes(h)) return;
+    if (["SHOP NAME", "TEAM LEADER", "GROUP NAME"].includes(h)) return;
     const total = filteredData.reduce((a, b) => a + (parseNumber(b[h]) || 0), 0);
     const card = document.createElement("div");
     card.className = "total-card";
@@ -211,11 +252,11 @@ function renderTotals() {
   });
 }
 
-/* ---------- Team Leader Link ---------- */
+/* ---------- TEAM LEADER LINK ---------- */
 function updateTeamDashboardLink() {
   const leader = document.getElementById("leaderFilter").value;
   const linkDiv = document.getElementById("teamDashboardLink");
-  
+
   if (leader && leader !== "ALL") {
     const url = `${window.location.origin}${window.location.pathname}?teamLeader=${encodeURIComponent(leader)}`;
     linkDiv.innerHTML = `
@@ -228,14 +269,35 @@ function updateTeamDashboardLink() {
   }
 }
 
-/* ---------- Event Listeners ---------- */
-document.getElementById("leaderFilter").addEventListener("change", filterData);
+/* ---------- FILTERING & EVENTS ---------- */
+document.getElementById("leaderFilter").addEventListener("change", () => {
+  const selectedLeader = document.getElementById("leaderFilter").value;
+  buildGroupDropdown(rawData, selectedLeader);
+  document.getElementById("groupFilter").value = "ALL";
+  filterData();
+});
+
+document.getElementById("groupFilter").addEventListener("change", () => {
+  const selectedGroup = document.getElementById("groupFilter").value;
+  if (selectedGroup !== "ALL") {
+    const match = rawData.find(
+      r => (r["GROUP NAME"] || "").trim().toUpperCase() === selectedGroup
+    );
+    if (match) {
+      document.getElementById("leaderFilter").value = (match["TEAM LEADER"] || "").trim().toUpperCase();
+    }
+  }
+  filterData();
+});
+
 document.getElementById("searchInput").addEventListener("input", filterData);
 document.getElementById("prevPage").addEventListener("click", () => { currentPage--; renderTable(); });
 document.getElementById("nextPage").addEventListener("click", () => { currentPage++; renderTable(); });
 document.getElementById("resetBtn").addEventListener("click", () => {
   document.getElementById("leaderFilter").value = "ALL";
+  document.getElementById("groupFilter").value = "ALL";
   document.getElementById("searchInput").value = "";
+  buildGroupDropdown(rawData, "ALL");
   filteredData = cachedData;
   currentPage = 1;
   renderTable();
@@ -244,19 +306,21 @@ document.getElementById("exportBtn").addEventListener("click", exportCSV);
 
 function filterData() {
   const leader = document.getElementById("leaderFilter").value;
+  const group = document.getElementById("groupFilter").value;
   const search = document.getElementById("searchInput").value.trim().toUpperCase();
 
   filteredData = cachedData.filter(r => {
     const matchLeader = leader === "ALL" || (r["TEAM LEADER"] || "").toUpperCase() === leader;
+    const matchGroup = group === "ALL" || (r["GROUP NAME"] || "").toUpperCase() === group;
     const matchSearch = (r["SHOP NAME"] || "").toUpperCase().includes(search);
-    return matchLeader && matchSearch;
+    return matchLeader && matchGroup && matchSearch;
   });
 
   currentPage = 1;
   renderTable();
 }
 
-/* ---------- CSV Export (Cross-Platform) ---------- */
+/* ---------- CSV EXPORT ---------- */
 function exportCSV() {
   let csv = HEADERS.join(",") + "\n";
   filteredData.forEach(r => {
@@ -265,31 +329,13 @@ function exportCSV() {
   });
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-
-  // Detect device
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isAndroid = /Android/.test(navigator.userAgent);
-
-  if (isIOS || isAndroid) {
-    // Mobile workaround: open in new tab
-    const url = URL.createObjectURL(blob);
-    const newTab = window.open(url, "_blank");
-    if (!newTab) {
-      alert("Please allow popups to download the file.");
-    } else {
-      newTab.document.title = "shops_balance.csv";
-    }
-  } else {
-    // Desktop browsers: direct download
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "shops_balance.csv";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "shops_balance.csv";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
 /* ---------- INIT ---------- */
 loadDashboard();
-
-
