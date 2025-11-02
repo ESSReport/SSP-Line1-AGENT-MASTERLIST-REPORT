@@ -293,15 +293,6 @@ document.getElementById("groupFilter").addEventListener("change", () => {
 document.getElementById("searchInput").addEventListener("input", filterData);
 document.getElementById("prevPage").addEventListener("click", () => { currentPage--; renderTable(); });
 document.getElementById("nextPage").addEventListener("click", () => { currentPage++; renderTable(); });
-document.getElementById("resetBtn").addEventListener("click", () => {
-  document.getElementById("leaderFilter").value = "ALL";
-  document.getElementById("groupFilter").value = "ALL";
-  document.getElementById("searchInput").value = "";
-  buildGroupDropdown(rawData, "ALL");
-  filteredData = cachedData;
-  currentPage = 1;
-  renderTable();
-});
 document.getElementById("exportBtn").addEventListener("click", exportCSV);
 
 function filterData() {
@@ -339,3 +330,4 @@ function exportCSV() {
 
 /* ---------- INIT ---------- */
 loadDashboard();
+
