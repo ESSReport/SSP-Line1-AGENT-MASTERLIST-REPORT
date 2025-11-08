@@ -3,67 +3,79 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SSP Line1 Balance Dashboard</title>
+  <title>Shop Balance Dashboard</title>
 
-  <!-- ✅ External CSS file -->
-  <link rel="stylesheet" href="styles.css">
-
-  <!-- 🔒 Simple PIN Protection -->
+  <!-- ✅ PIN check runs before any DOM is built -->
   <script>
-    const encodedPass = "MTEwMTIwMjU="; // base64 for "11012025"
-    const entered = prompt("Enter PIN to access dashboard:");
-    if (btoa(entered) !== encodedPass) {
-      document.body.innerHTML = `
-        <h2 style="color:red;text-align:center;margin-top:40px;">
-          Access Denied ❌<br>Invalid PIN
-        </h2>`;
-      throw new Error("Access denied");
-    }
+    (function(){
+      const encoded = "MTEwMTIwMjU="; // "11012025"
+      const entered = prompt("🔐 Enter PIN to access dashboard:");
+      if (!entered || btoa(entered) !== encoded) {
+        document.write(`
+          <style>
+            body{
+              display:flex;
+              justify-content:center;
+              align-items:center;
+              height:100vh;
+              background:#fff3f3;
+              color:#c00;
+              font-family:Arial,sans-serif;
+              text-align:center;
+            }
+          </style>
+          <body><h2>❌ Access Denied<br>Invalid PIN</h2></body>
+        `);
+        document.close();
+        window.stop();
+      }
+    })();
   </script>
+
+  <style>
+    body { font-family:"Segoe UI",sans-serif; background:#f6f8fa; padding:20px; }
+    h1 { text-align:center; margin-bottom:20px; }
+    table { border-collapse:collapse; width:100%; background:#fff; }
+    th,td { border:1px solid #ccc; padding:8px; text-align:center; }
+    th { background:#0077cc; color:#fff; }
+    tr:nth-child(even){ background:#f2f2f2; }
+    button { background:#0077cc; color:#fff; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; }
+    button:hover { background:#005fa3; }
+    .controls { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:15px; }
+    #totalsRow { display:flex; flex-wrap:wrap; gap:8px; margin-top:15px; }
+    .total-card { background:#fff; padding:10px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); flex:1 1 150px; text-align:center; }
+  </style>
 </head>
 
 <body>
-  <h2>Shops Balance Summary</h2>
+  <h1>📊 Shop Balance Dashboard</h1>
 
-  <!-- Toolbar (Filters & Actions) -->
-  <div class="toolbar">
-    <select id="leaderFilter">
-      <option value="ALL">All Team Leaders</option>
-    </select>
-
-    <select id="groupFilter">
-      <option value="ALL">All Groups</option>
-    </select>
-
-    <input type="text" id="searchInput" placeholder="🔍 Search Shop Name..." />
-
-    <button id="exportBtn">💾 Export CSV</button>
-
+  <div class="controls">
+    <select id="leaderFilter"></select>
+    <select id="groupFilter"></select>
+    <input id="searchInput" type="text" placeholder="Search Shop..." />
+    <button id="exportBtn">⬇️ Export CSV</button>
+    <button id="downloadAllShopsBtn">🗂 Download All Summaries (ZIP)</button>
   </div>
 
-  <!-- Link to open filtered dashboard in new tab -->
   <div id="teamDashboardLink"></div>
 
-  <!-- Table Container -->
-  <div id="tableContainer">
-    <table id="shopTable">
-      <thead><tr id="tableHeader"></tr></thead>
-      <tbody id="tableBody"></tbody>
-    </table>
+  <table>
+    <thead><tr id="tableHeader"></tr></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:10px;">
+    <button id="prevPage">◀ Prev</button>
+    <span id="pageInfo">Page 1</span>
+    <button id="nextPage">Next ▶</button>
   </div>
 
-  <!-- Pagination Controls -->
-  <div id="pagination">
-    <button id="prevPage" disabled>⬅ Prev</button>
-    <span id="pageInfo" style="margin:0 12px;">Page 1</span>
-    <button id="nextPage">Next ➡</button>
-  </div>
-
-  <!-- Totals Summary -->
   <div id="totalsRow"></div>
 
-  <!-- Dashboard logic -->
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>
-
