@@ -1,3 +1,5 @@
+// shop_dashboard.js
+
 // ------------------------------
 // Configuration
 // ------------------------------
@@ -51,6 +53,7 @@ async function loadData() {
   loadingSpinner.style.display = "block";
 
   try {
+    // Fetch all sheets first
     const [depositData, withdrawalData, stlmData, commData, shopBalanceData] = await Promise.all([
       fetchSheet(SHEETS.DEPOSIT),
       fetchSheet(SHEETS.WITHDRAWAL),
@@ -61,30 +64,35 @@ async function loadData() {
 
     const normalizedShop = normalizeString(shopName);
 
-    // ------------------------------
-    // SHOP BALANCE: B/F, Security Deposit, Team Leader
-    // ------------------------------
+    // Find shop info
     const shopRow = shopBalanceData.find(r => normalizeString(r["SHOP"]) === normalizedShop);
     const bringForwardBalance = parseNumber(shopRow ? rTrim(shopRow[" BRING FORWARD BALANCE "]) : 0);
     const securityDeposit = parseNumber(shopRow ? rTrim(shopRow["SECURITY DEPOSIT"]) : 0);
     const teamLeader = shopRow ? rTrim(shopRow["TEAM LEADER"]) : "-";
 
+    // ------------------------------
+    // PIN verification using auth.js
+    // ------------------------------
+   if (typeof window.checkTLAccess !== "function") throw new Error("auth.js not loaded");
+await window.checkTLAccess(teamLeader); // only prompts once for TL PIN
+
+    // ------------------------------
+    // Populate header info
+    // ------------------------------
     document.getElementById("infoShopName").textContent = shopName;
     document.getElementById("infoBFBalance").textContent = formatNumber(bringForwardBalance);
     document.getElementById("infoSecDeposit").textContent = formatNumber(securityDeposit);
     document.getElementById("infoTeamLeader").textContent = teamLeader;
 
     // ------------------------------
-    // Commission Rates
+    // Transaction rendering (daily)
     // ------------------------------
-    const shopCommRow = commData.find(r => normalizeString(r.SHOP) === normalizedShop);
-    const dpCommRate = parseNumber(shopCommRow?.["DP COMM"]);
-    const wdCommRate = parseNumber(shopCommRow?.["WD COMM"]);
-    const addCommRate = parseNumber(shopCommRow?.["ADD COMM"]);
+    const tlRow = commData.find(r => normalizeString(r.SHOP) === normalizedShop);
+    const dpCommRate = parseNumber(tlRow?.["DP COMM"]);
+    const wdCommRate = parseNumber(tlRow?.["WD COMM"]);
+    const addCommRate = parseNumber(tlRow?.["ADD COMM"]);
 
-    // ------------------------------
     // Unique dates
-    // ------------------------------
     const datesSet = new Set([
       ...depositData.filter(r => normalizeString(r.SHOP) === normalizedShop).map(r => r.DATE),
       ...withdrawalData.filter(r => normalizeString(r.SHOP) === normalizedShop).map(r => r.DATE),
@@ -92,42 +100,16 @@ async function loadData() {
     ]);
     const sortedDates = Array.from(datesSet).filter(Boolean).sort((a,b) => new Date(a) - new Date(b));
 
-    // ------------------------------
-    // Initialize running totals
-    // ------------------------------
     let runningBalance = bringForwardBalance;
-    const totals = {
-      depTotal:0, wdTotal:0, inAmt:0, outAmt:0, settlement:0,
-      specialPay:0, adjustment:0, secDep:0, dpComm:0, wdComm:0, addComm:0
-    };
+    const totals = { depTotal:0, wdTotal:0, inAmt:0, outAmt:0, settlement:0, specialPay:0, adjustment:0, secDep:0, dpComm:0, wdComm:0, addComm:0 };
     tbody.innerHTML = "";
 
-    // ------------------------------
-    // Add B/F Balance row
-    // ------------------------------
     if (bringForwardBalance) {
       const bfbRow = document.createElement("tr");
-      bfbRow.innerHTML = `
-        <td>B/F Balance</td>
-        <td>0.00</td>
-        <td>0.00</td>
-        <td>0.00</td>
-        <td>0.00</td>
-        <td>0.00</td>
-        <td>0.00</td>
-        <td>0.00</td>
-        <td>${formatNumber(securityDeposit)}</td>
-        <td>0.00</td>
-        <td>0.00</td>
-        <td>0.00</td>
-        <td>${formatNumber(runningBalance)}</td>
-      `;
+      bfbRow.innerHTML = `<td>B/F Balance</td>` + `<td>0.00</td>`.repeat(11) + `<td>${formatNumber(runningBalance)}</td>`;
       tbody.appendChild(bfbRow);
     }
 
-    // ------------------------------
-    // Loop through each date
-    // ------------------------------
     for (const date of sortedDates) {
       const deposits = depositData.filter(r=>normalizeString(r.SHOP)===normalizedShop && r.DATE===date);
       const withdrawals = withdrawalData.filter(r=>normalizeString(r.SHOP)===normalizedShop && r.DATE===date);
@@ -175,15 +157,9 @@ async function loadData() {
       tbody.appendChild(tr);
     }
 
-    // ------------------------------
-    // Highlight latest row
-    // ------------------------------
     const rows = tbody.querySelectorAll("tr");
     if (rows.length) rows[rows.length-1].classList.add("latest");
 
-    // ------------------------------
-    // Totals row
-    // ------------------------------
     totalsRow.innerHTML = `<td>TOTAL</td>
       <td>${formatNumber(totals.depTotal)}</td>
       <td>${formatNumber(totals.wdTotal)}</td>
@@ -199,16 +175,14 @@ async function loadData() {
       <td>${formatNumber(runningBalance)}</td>
     `;
 
-    // ------------------------------
-    // Attach View Daily Transactions redirect
-    // ------------------------------
+    // CSV download
+    document.getElementById('downloadCsvBtn').addEventListener('click', () => {
+      downloadTableAsCSV(`${shopName || 'daily_transactions'}.csv`);
+    });
+
+    // View daily transactions
     document.getElementById("viewDailyBtn").addEventListener("click", () => {
-      const shop = document.getElementById("infoShopName").textContent;
-      if (!shop || shop === "-") {
-        alert("Shop name not available yet. Please wait for data to load.");
-        return;
-      }
-      window.location.href = `daily_transactions.html?shopName=${encodeURIComponent(shop)}`;
+      window.location.href = `daily_transactions.html?shopName=${encodeURIComponent(shopName)}`;
     });
 
   } catch(err){
@@ -220,13 +194,11 @@ async function loadData() {
 }
 
 // ------------------------------
-// CSV Download with Shop Header
+// CSV Download
 // ------------------------------
 function downloadTableAsCSV(filename = 'daily_transactions.csv') {
   const rows = document.querySelectorAll('#transactionTable tbody tr, #transactionTable tfoot tr');
   const csv = [];
-
-  // Shop header info
   const shopNameText = document.getElementById("infoShopName").textContent;
   const secDepositText = document.getElementById("infoSecDeposit").textContent;
   const bfBalanceText = document.getElementById("infoBFBalance").textContent;
@@ -238,27 +210,20 @@ function downloadTableAsCSV(filename = 'daily_transactions.csv') {
   csv.push(`Bring Forward Balance: ${bfBalanceText}`);
   csv.push(`Team Leader: ${teamLeaderText}`);
 
-  // Table header
   const headerCols = document.querySelectorAll('#transactionTable thead th');
   const headerRow = Array.from(headerCols).map(th => `"${th.textContent.replace(/"/g,'""')}"`).join(',');
   csv.push(headerRow);
 
-  // Transaction rows + totals
   rows.forEach(row => {
     const cols = row.querySelectorAll('td, th');
     const rowData = [];
-    cols.forEach(col => {
-      let data = col.textContent.replace(/"/g, '""');
-      rowData.push(`"${data}"`);
-    });
+    cols.forEach(col => { rowData.push(`"${col.textContent.replace(/"/g, '""')}"`); });
     csv.push(rowData.join(','));
   });
 
-  // Download CSV
   const csvString = csv.join('\n');
   const blob = new Blob([csvString], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
@@ -268,12 +233,5 @@ function downloadTableAsCSV(filename = 'daily_transactions.csv') {
   URL.revokeObjectURL(url);
 }
 
-// Attach CSV download event
-document.getElementById('downloadCsvBtn').addEventListener('click', () => {
-  downloadTableAsCSV(`${shopName || 'daily_transactions'}.csv`);
-});
-
-// ------------------------------
 // Initialize
-// ------------------------------
 loadData();
