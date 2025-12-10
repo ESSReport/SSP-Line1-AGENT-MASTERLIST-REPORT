@@ -1,34 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- 🔐 PIN PROTECTION -->
-  <script>
-    (function(){
-      const encoded = "MTEwMTIwMjU="; // "11012025"
-      const entered = prompt("🔐 Enter PIN to access dashboard:");
-      if (!entered || btoa(entered) !== encoded) {
-        document.write(`
-          <style>
-            body{
-              display:flex;
-              justify-content:center;
-              align-items:center;
-              height:100vh;
-              background:#fff3f3;
-              color:#c00;
-              font-family:Arial,sans-serif;
-              text-align:center;
-            }
-          </style>
-          <body><h2>❌ Access Denied<br>Invalid PIN</h2></body>
-        `);
-        document.close();
-        window.stop();
-      }
-    })();
-  </script>
-  <!-- END PIN PROTECTION -->
-
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Shop Dashboard</title>
@@ -119,6 +91,44 @@
     </tfoot>
   </table>
 
-  <script src="shop_dashboard.js"></script>
+  <script src="auth.js"></script>
+<script src="shop_dashboard.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    const shopName = new URLSearchParams(window.location.search).get("shopName");
+    if (!shopName) throw new Error("No shopName found in URL");
+
+    const SHEET_ID = "1w5PrRJ9DFTAt8UmkJKlCLwK0mbvxCtjFX7jcVFli0gA";
+    const SHOP_BALANCE_URL = `https://opensheet.elk.sh/${SHEET_ID}/SHOPS%20BALANCE`;
+
+    const res = await fetch(SHOP_BALANCE_URL);
+    if (!res.ok) throw new Error("Failed to fetch shop balance sheet");
+    const shopBalanceData = await res.json();
+
+    const shopRow = shopBalanceData.find(r => (r["SHOP"] || "").trim().toUpperCase() === shopName.toUpperCase());
+    if (!shopRow) throw new Error("Shop not found");
+
+    const teamLeader = (shopRow["TEAM LEADER"] || "").trim().toUpperCase();
+    if (!teamLeader) throw new Error("Team Leader not registered");
+
+    if (typeof window.checkTLAccess !== "function") throw new Error("auth.js not loaded");
+
+    // ✅ TL PIN prompt happens only once
+    await window.checkTLAccess(teamLeader);
+
+    // ✅ Now safe to load shop dashboard
+    await loadData();
+  } catch(err) {
+    console.error(err);
+    document.body.innerHTML = `
+      <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#fff3f3;color:#c00;font-family:Arial,sans-serif;text-align:center;">
+        <h2>❌ Access Denied<br>${err.message}</h2>
+      </div>
+    `;
+  }
+});
+</script>
 </body>
 </html>
