@@ -5,32 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Shop Balance Dashboard</title>
 
-  <!-- ✅ PIN check runs before any DOM is built -->
-  <script>
-    (function(){
-      const encoded = "MTEwMTIwMjU="; // "11012025"
-      const entered = prompt("🔐 Enter PIN to access dashboard:");
-      if (!entered || btoa(entered) !== encoded) {
-        document.write(`
-          <style>
-            body{
-              display:flex;
-              justify-content:center;
-              align-items:center;
-              height:100vh;
-              background:#fff3f3;
-              color:#c00;
-              font-family:Arial,sans-serif;
-              text-align:center;
-            }
-          </style>
-          <body><h2>❌ Access Denied<br>Invalid PIN</h2></body>
-        `);
-        document.close();
-        window.stop();   // hard stop: no further parsing or JS
-      }
-    })();
-  </script>
+  <!-- Auth first -->
+  <script src="auth.js"></script>
+  <script src="dashboard.js"></script>
 
   <style>
     body { font-family:"Segoe UI",sans-serif; background:#f6f8fa; padding:20px; }
@@ -74,8 +51,40 @@
   <div id="totalsRow"></div>
 
   <!-- Libraries -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-<script src="dashboard.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <script>
+  (async () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const leaderParam = (params.get("teamLeader") || "").toUpperCase();
+
+      if (leaderParam) {
+        // TL access: require PIN
+        await window.checkTLAccess(leaderParam);
+
+        // Lock TL dropdown
+        const leaderSelect = document.getElementById("leaderFilter");
+        if (leaderSelect) {
+          leaderSelect.value = leaderParam;
+          leaderSelect.disabled = true;
+        }
+      } else {
+        // Admin access: require PIN
+        await window.requireAdmin();
+      }
+
+      await initDashboard(); // Only after successful PIN
+
+    } catch(e) {
+      document.body.innerHTML = `
+        <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#fff3f3;color:#c00;font-family:Arial,sans-serif;text-align:center;">
+          <h2>❌ Access Denied<br>${e.message || 'Invalid PIN'}</h2>
+        </div>
+      `;
+    }
+  })();
+  </script>
 </body>
 </html>
