@@ -6,8 +6,8 @@
   <title>Shop Balance Dashboard</title>
 
   <!-- Auth first -->
-  <script src="auth.js"></script>
-  <script src="dashboard.js"></script>
+  <script src="auth.js" defer></script>
+<script src="dashboard.js" defer></script>
 
   <style>
     body { font-family:"Segoe UI",sans-serif; background:#f6f8fa; padding:20px; }
@@ -55,36 +55,41 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
   <script>
-  (async () => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const leaderParam = (params.get("teamLeader") || "").toUpperCase();
-
-      if (leaderParam) {
-        // TL access: require PIN
-        await window.checkTLAccess(leaderParam);
-
-        // Lock TL dropdown
-        const leaderSelect = document.getElementById("leaderFilter");
-        if (leaderSelect) {
-          leaderSelect.value = leaderParam;
-          leaderSelect.disabled = true;
-        }
-      } else {
-        // Admin access: require PIN
-        await window.requireAdmin();
-      }
-
-      await initDashboard(); // Only after successful PIN
-
-    } catch(e) {
-      document.body.innerHTML = `
-        <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#fff3f3;color:#c00;font-family:Arial,sans-serif;text-align:center;">
-          <h2>❌ Access Denied<br>${e.message || 'Invalid PIN'}</h2>
-        </div>
-      `;
+(async () => {
+  try {
+    // Wait for DOM first
+    if (document.readyState === "loading") {
+      await new Promise(resolve =>
+        document.addEventListener("DOMContentLoaded", resolve, { once: true })
+      );
     }
-  })();
-  </script>
+
+    const params = new URLSearchParams(window.location.search);
+    const leaderParam = (params.get("teamLeader") || "").toUpperCase();
+
+    if (leaderParam) {
+      await window.checkTLAccess(leaderParam);
+
+      const leaderSelect = document.getElementById("leaderFilter");
+      if (leaderSelect) {
+        leaderSelect.value = leaderParam;
+        leaderSelect.disabled = true;
+      }
+    } else {
+      await window.requireAdmin();
+    }
+
+    // ✅ SAFE: DOM ready + PIN validated
+    await initDashboard();
+
+  } catch (e) {
+    document.body.innerHTML = `
+      <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#fff3f3;color:#c00;font-family:Arial,sans-serif;text-align:center;">
+        <h2>❌ Access Denied<br>${e.message || 'Invalid PIN'}</h2>
+      </div>
+    `;
+  }
+})();
+</script>
 </body>
 </html>
