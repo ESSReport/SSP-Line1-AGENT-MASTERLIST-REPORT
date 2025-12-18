@@ -352,4 +352,6 @@ async function initDashboard() {
   } catch(err){ console.error(err); alert("Failed to initialize dashboard: "+err.message); }
 }
 
-window.addEventListener("DOMContentLoaded", initDashboard);
+window.initDashboard = initDashboard;
+
+
