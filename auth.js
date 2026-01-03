@@ -21,7 +21,8 @@ const TL_PINS = {
   "JISAN": "104766",
   "AIMAN": "587340",
   "BERLIN": "933222",
-  "ALADDIN": "042599"
+  "ALADDIN": "042599",
+  "TAPAN": "902398"
 };
 
 // -------------------------
@@ -60,4 +61,5 @@ window.checkTLAccess = async function(tlName) {
   if (!tlName) throw new Error("Team Leader not specified");
   return await window.requireTeamLeader(tlName);
 };
+
 
