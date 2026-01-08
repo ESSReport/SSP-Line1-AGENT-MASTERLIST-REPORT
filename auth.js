@@ -26,7 +26,9 @@ const TL_PINS = {
   "BADBOY": "632278",
   "JEWEL": "804397",
   "SUJAN": "532478",
-  "KERIO": "859614"
+  "KERIO": "859614",
+  "RUHUL": "859752",
+  "RAYHAN": "859833"
 };
 
 // -------------------------
@@ -65,6 +67,7 @@ window.checkTLAccess = async function(tlName) {
   if (!tlName) throw new Error("Team Leader not specified");
   return await window.requireTeamLeader(tlName);
 };
+
 
 
 
