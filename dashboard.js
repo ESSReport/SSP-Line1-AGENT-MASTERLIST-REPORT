@@ -199,7 +199,7 @@ function exportCSV() {
    ZIP Download – B/F Balance & COMM
 ------------------------- */
 async function downloadAllShops() {
-  if (!cachedData.length) { alert("No shop data available"); return; }
+  if (!filteredData.length) { alert("No shop data available"); return; }
   const zip = new JSZip();
 
   try {
@@ -218,7 +218,7 @@ async function downloadAllShops() {
     const parseComm = v => { if(!v) return 0; return parseFloat(String(v).replace("%",""))||0; };
     const formatNum = v => (v||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 
-    for (const shop of cachedData) {
+    for (const shop of filteredData) {
       const shopName = shop["SHOP NAME"];
       const normalizedShop = normalizeStr(shopName);
       const teamLeader = shop["TEAM LEADER"] || "Unknown";
@@ -353,5 +353,6 @@ async function initDashboard() {
 }
 
 window.initDashboard = initDashboard;
+
 
 
