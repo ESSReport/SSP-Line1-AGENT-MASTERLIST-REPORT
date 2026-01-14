@@ -32,7 +32,9 @@ const TL_PINS = {
   "TANVIR": "463564",
   "ISMAIL": "859632",
   "PALI": "398624",
-  "SAGOR": "637841"
+  "SAGOR": "637841",
+  "EMON": "865212",
+  "RIDOY": "649467"
 };
 
 // -------------------------
@@ -71,6 +73,7 @@ window.checkTLAccess = async function(tlName) {
   if (!tlName) throw new Error("Team Leader not specified");
   return await window.requireTeamLeader(tlName);
 };
+
 
 
 
