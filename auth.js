@@ -35,7 +35,9 @@ const TL_PINS = {
   "SAGOR": "637841",
   "EMON": "865212",
   "RIDOY": "649467",
-  "RIPAN": "943516"
+  "RIPAN": "943516",
+  "MIRAAN": "823465",
+  "MONIR": "578416"
 };
 
 // -------------------------
@@ -74,6 +76,7 @@ window.checkTLAccess = async function(tlName) {
   if (!tlName) throw new Error("Team Leader not specified");
   return await window.requireTeamLeader(tlName);
 };
+
 
 
 
