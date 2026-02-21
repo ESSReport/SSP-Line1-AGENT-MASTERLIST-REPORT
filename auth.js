@@ -44,7 +44,8 @@ const TL_PINS = {
   "NIHJUM": "945632",
   "CHAK": "584124",
   "LIMON": "584563",
-  "SOHARD": "872564"
+  "SOHARD": "872564",
+  "JUWEL": "431796"
 };
 
 // -------------------------
@@ -83,6 +84,7 @@ window.checkTLAccess = async function(tlName) {
   if (!tlName) throw new Error("Team Leader not specified");
   return await window.requireTeamLeader(tlName);
 };
+
 
 
 
