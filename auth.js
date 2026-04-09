@@ -20,7 +20,7 @@ const TL_PINS = {
   "ROSE": "364769",
   "JISAN": "104766",
   "AIMAN": "587340",
-  "BERLIN": "933222",
+  "BERLIN": "882271",
   "ALADDIN": "042599",
   "TAPAN": "902398",
   "BADBOY": "632278",
