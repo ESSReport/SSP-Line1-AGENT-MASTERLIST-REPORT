@@ -46,7 +46,7 @@ const TL_PINS = {
   "LIMON": "584563",
   "SOHARD": "872564",
   "JUWEL": "431796",
-  "ROBI": "726814",
+  "MOTIN": "726814",
   "NURNOBY": "247537"
 };
 
