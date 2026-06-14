@@ -4,7 +4,7 @@ const ADMIN_PIN = "11302024";
 const TL_PINS = {
   "MUNIM": "820156",
   "SHAKIL": "758482",
-  "MR LEE": "340451",
+  "MR LEE": "340352",
   "XYZ": "716515",
   "OSMAN": "883187",
   "DARAZ": "560722",
